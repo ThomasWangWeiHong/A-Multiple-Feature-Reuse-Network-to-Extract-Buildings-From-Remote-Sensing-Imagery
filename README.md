@@ -6,6 +6,12 @@ input image patches and mask patches to be used for model training. The CNN used
 implemented in the paper 'A Multiple - Feature Reuse Network to Extract Buildings from Remote Sensing Imagery' by Lin L., Liang J.,
 Weng M., Zhu H. (2018)
 
+The main differences between the implementations in the paper and the implementation in this repository is as follows:
+- Sigmoid layer is used as the last layer instead of the softmax layer, in consideration of the fact that this is a binary 
+  classification problem
+- The dice coefficient function is used as the loss function in place of the binary cross - entropy loss function, in consideration 
+  of the fact that this is a semantic segmentation problem, whereby emphasis should be placed on accuracy of target delineation
+
 Requirements:
 - cv2
 - glob
