@@ -423,3 +423,57 @@ def MFRN_model(img_height_size, img_width_size, n_bands, initial_num_filters, nu
     mfrn_model.compile(loss = dice_coef_loss, optimizer = Adam(lr = l_r), metrics = [dice_coef])
     
     return mfrn_model
+
+
+
+def image_model_predict(input_image_filename, output_filename, img_height_size, img_width_size, fitted_model, write):
+    """ 
+    This function cuts up an image into segments of fixed size, and feeds each segment to the model for prediction. The 
+    output mask is then allocated to its corresponding location in the image in order to obtain the complete mask for the 
+    entire image without being constrained by image size. 
+    
+    """
+    
+    img = np.transpose(gdal.Open(input_image_filename).ReadAsArray(), [1, 2, 0])
+    
+    y_size = ((img.shape[0] // img_height_size) + 1) * img_height_size
+    x_size = ((img.shape[1] // img_width_size) + 1) * img_width_size
+    
+    if (img.shape[0] % img_height_size != 0) and (img.shape[1] % img_width_size == 0):
+        img_complete = np.zeros((y_size, img.shape[1], img.shape[2]))
+        img_complete[0 : img.shape[0], 0 : img.shape[1], 0 : img.shape[2]] = img
+    elif (img.shape[0] % img_height_size == 0) and (img.shape[1] % img_width_size != 0):
+        img_complete = np.zeros((img.shape[0], x_size, img.shape[2]))
+        img_complete[0 : img.shape[0], 0 : img.shape[1], 0 : img.shape[2]] = img
+    elif (img.shape[0] % img_height_size != 0) and (img.shape[1] % img_width_size != 0):
+        img_complete = np.zeros((y_size, x_size, img.shape[2]))
+        img_complete[0 : img.shape[0], 0 : img.shape[1], 0 : img.shape[2]] = img
+    else:
+         img_complete = img
+            
+    mask = np.zeros((img_complete.shape[0], img_complete.shape[1], 1))
+    img_holder = np.zeros((1, img_height_size, img_width_size, img.shape[2]))
+    
+    for i in range(0, img_complete.shape[0], img_height_size):
+        for j in range(0, img_complete.shape[1], img_width_size):
+            img_holder[0] = img_complete[i : i + img_height_size, j : j + img_width_size, 0 : img.shape[2]]
+            preds = fitted_model.predict(img_holder)
+            mask[i : i + img_height_size, j : j + img_width_size, 0] = preds[0, :, :, 0]
+            
+    mask_complete = mask[0 : img.shape[0], 0 : img.shape[1], 0]
+    
+    if write:
+        input_dataset = gdal.Open(input_image_filename)
+        input_band = input_dataset.GetRasterBand(1)
+        gtiff_driver = gdal.GetDriverByName('GTiff')
+        output_dataset = gtiff_driver.Create(output_filename, input_band.XSize, input_band.YSize, 
+                                             1, gdal.GDT_Float32)
+        output_dataset.SetProjection(input_dataset.GetProjection())
+        output_dataset.SetGeoTransform(input_dataset.GetGeoTransform())
+        output_dataset.GetRasterBand(1).WriteArray(mask_complete)
+    
+        output_dataset.FlushCache()
+        output_dataset.GetRasterBand(1).ComputeStatistics(False)
+        del output_dataset
+    
+    return mask_complete
