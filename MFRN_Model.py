@@ -432,6 +432,17 @@ def image_model_predict(input_image_filename, output_filename, img_height_size, 
     output mask is then allocated to its corresponding location in the image in order to obtain the complete mask for the 
     entire image without being constrained by image size. 
     
+    Inputs:
+    - input_image_filename: File path of image file for which prediction is to be conducted
+    - output_filename: File path of output predicted binary raster mask file
+    - img_height_size: Height of image patches to be used for model prediction
+    - img_height_size: Width of image patches to be used for model prediction
+    - fitted_model: Trained keras model which is to be used for prediction
+    - write: Boolean indicating whether to write predicted binary raster mask to file
+    
+    Output:
+    - mask_complete: Numpy array of predicted binary raster mask for input image
+    
     """
     
     img = np.transpose(gdal.Open(input_image_filename).ReadAsArray(), [1, 2, 0])
